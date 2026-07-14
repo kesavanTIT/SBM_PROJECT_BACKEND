@@ -22,8 +22,12 @@ const startServer = async () => {
       console.log('Shutting down server gracefully...');
       server.close(async () => {
         console.log('HTTP server closed.');
-        await prisma.$disconnect();
-        console.log('Database connection closed.');
+        try {
+          await prisma.$disconnect();
+          console.log('Database connection closed.');
+        } catch (err) {
+          console.error('Error during database disconnect:', err);
+        }
         process.exit(0);
       });
     };
