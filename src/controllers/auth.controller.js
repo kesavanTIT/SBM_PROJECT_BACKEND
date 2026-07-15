@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { AppError } from '../middlewares/error.middleware.js';
 import prisma from '../config/db.js';
@@ -53,6 +53,7 @@ export const staffLogin = async (req, res, next) => {
 
     const staff = await prisma.staff.findUnique({
       where: { email },
+      include: { branch: true },
     });
 
     // Check if staff exists and staffId matches (case-insensitive or exact? exact is better)
@@ -79,7 +80,9 @@ export const staffLogin = async (req, res, next) => {
           zipCode: staff.zipCode,
           joinDate: staff.joinDate,
           photoUrl: staff.photoUrl,
-          status: staff.status
+          status: staff.status,
+          branchId: staff.branchId,
+          branchName: staff.branch?.name || null,
         },
       },
     });
@@ -87,3 +90,4 @@ export const staffLogin = async (req, res, next) => {
     next(error);
   }
 };
+

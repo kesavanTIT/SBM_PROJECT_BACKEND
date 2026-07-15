@@ -24,34 +24,69 @@ const getTodayDateString = () => {
 
 export const checkIn = async (req, res, next) => {
   try {
-    const { latitude, longitude } = req.body;
+    const { latitude, longitude, branchId } = req.body;
     const staffId = req.user.id;
+
+    if (req.user.role !== 'staff') {
+      return next(new AppError('Only staff members can perform this action', 403));
+    }
 
     if (!latitude || !longitude) {
       return next(new AppError('Location coordinates are required for check-in', 400));
     }
 
-    // Office Location Settings from env or hardcoded fallback
-    const officeLat = parseFloat(process.env.OFFICE_LAT || '10.3680'); // Dindigul roughly
-    const officeLng = parseFloat(process.env.OFFICE_LNG || '77.9803');
-    const allowedRadius = parseFloat(process.env.ALLOWED_RADIUS_METERS || '1000'); // 1km for testing
+    // ── Resolve branch ──────────────────────────────────────────────────────
+    // Priority:
+    //   1. branchId passed from the staff dashboard (locked to their assigned branch)
+    //   2. Staff's assigned branch from DB
+    // If neither exists → reject. No env/hardcoded fallback allowed.
+    let branch;
 
-    const distance = calculateDistance(latitude, longitude, officeLat, officeLng);
+    if (branchId) {
+      branch = await prisma.branch.findUnique({ where: { id: parseInt(branchId) } });
+      if (!branch) {
+        return next(new AppError('Selected branch not found. Contact admin.', 404));
+      }
+    } else {
+      // Look up staff's assigned branch
+      const staffRecord = await prisma.staff.findUnique({
+        where: { id: staffId },
+        include: { branch: true },
+      });
+      branch = staffRecord?.branch || null;
+    }
 
-    if (distance > allowedRadius) {
-      return next(new AppError(`You are not within the office premises. (Distance: ${Math.round(distance)}m)`, 403));
+    if (!branch) {
+      return next(
+        new AppError(
+          'You are not assigned to any office branch. Please contact admin to assign your branch before checking in.',
+          403
+        )
+      );
+    }
+
+    // ── Geofence check using branch coordinates ─────────────────────────────
+    const distance = calculateDistance(
+      latitude,
+      longitude,
+      branch.latitude,
+      branch.longitude
+    );
+
+    if (distance > branch.geofenceRadius) {
+      return next(
+        new AppError(
+          `You are ${Math.round(distance)} meters away from ${branch.name}. You must be within ${branch.geofenceRadius} meters to check-in.`,
+          403
+        )
+      );
     }
 
     const todayDate = getTodayDateString();
 
     // Check if already checked in today
     const existingRecord = await prisma.attendance.findUnique({
-      where: {
-        staffId_date: {
-          staffId,
-          date: todayDate,
-        },
-      },
+      where: { staffId_date: { staffId, date: todayDate } },
     });
 
     if (existingRecord) {
@@ -59,18 +94,20 @@ export const checkIn = async (req, res, next) => {
     }
 
     const checkInTime = new Date();
-    
+
     // Check if late (after 09:45 local time)
     const hr = checkInTime.getHours();
     const min = checkInTime.getMinutes();
-    let shiftStatus = "On Time";
+    let shiftStatus = 'On Time';
     if (hr > 9 || (hr === 9 && min > 45)) {
-      shiftStatus = "Late";
+      shiftStatus = 'Late';
     }
 
     const attendance = await prisma.attendance.create({
       data: {
         staffId,
+        branchId: branch.id,
+        branchName: branch.name,
         date: todayDate,
         checkIn: checkInTime,
         status: shiftStatus,
@@ -88,9 +125,13 @@ export const checkIn = async (req, res, next) => {
   }
 };
 
+
 export const checkOut = async (req, res, next) => {
   try {
     const staffId = req.user.id;
+    if (req.user.role !== 'staff') {
+      return next(new AppError('Only staff members can perform this action', 403));
+    }
     const todayDate = getTodayDateString();
 
     const existingRecord = await prisma.attendance.findUnique({
@@ -160,6 +201,9 @@ export const checkOut = async (req, res, next) => {
 export const getTodayStatus = async (req, res, next) => {
   try {
     const staffId = req.user.id;
+    if (req.user.role !== 'staff') {
+      return next(new AppError('Only staff members can perform this action', 403));
+    }
     const todayDate = getTodayDateString();
 
     const attendance = await prisma.attendance.findUnique({
@@ -183,6 +227,9 @@ export const getTodayStatus = async (req, res, next) => {
 export const getStaffHistory = async (req, res, next) => {
   try {
     const staffId = req.user.id;
+    if (req.user.role !== 'staff') {
+      return next(new AppError('Only staff members can perform this action', 403));
+    }
     
     const history = await prisma.attendance.findMany({
       where: { staffId },
@@ -206,23 +253,23 @@ export const getAllAttendance = async (req, res, next) => {
       return next(new AppError('Not authorized', 403));
     }
 
-    const { date, month } = req.query;
+    const { date, month, branchId } = req.query;
     
     let whereClause = {};
     if (date) {
       whereClause.date = date; // YYYY-MM-DD
     } else if (month) {
-      // month format: YYYY-MM
-      whereClause.date = {
-        startsWith: month,
-      };
+      whereClause.date = { startsWith: month };
+    }
+    if (branchId && branchId !== 'all') {
+      whereClause.branchId = parseInt(branchId);
     }
 
     const attendanceRecords = await prisma.attendance.findMany({
       where: whereClause,
       include: {
         staff: {
-          select: { id: true, name: true, staffId: true, photoUrl: true }
+          select: { id: true, name: true, staffId: true, photoUrl: true, branchId: true }
         }
       },
       orderBy: { date: 'desc' },

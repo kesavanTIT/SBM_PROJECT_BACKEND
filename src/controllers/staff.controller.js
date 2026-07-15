@@ -4,15 +4,14 @@ import prisma from '../config/db.js';
 export const getAllStaff = async (req, res, next) => {
   try {
     const staff = await prisma.staff.findMany({
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      include: { branch: { select: { id: true, name: true } } },
     });
 
     res.status(200).json({
       status: 'success',
       results: staff.length,
-      data: {
-        staff,
-      },
+      data: { staff },
     });
   } catch (error) {
     next(error);
@@ -33,6 +32,7 @@ export const createStaff = async (req, res, next) => {
       state,
       zipCode,
       photoUrl,
+      branchId,
     } = req.body;
 
     const existingStaff = await prisma.staff.findUnique({
@@ -56,14 +56,14 @@ export const createStaff = async (req, res, next) => {
         state,
         zipCode,
         photoUrl,
+        branchId: branchId ? parseInt(branchId) : null,
       },
+      include: { branch: { select: { id: true, name: true } } },
     });
 
     res.status(201).json({
       status: 'success',
-      data: {
-        staff: newStaff,
-      },
+      data: { staff: newStaff },
     });
   } catch (error) {
     next(error);
@@ -74,6 +74,7 @@ export const getStaffById = async (req, res, next) => {
   try {
     const staff = await prisma.staff.findUnique({
       where: { id: parseInt(req.params.id) },
+      include: { branch: { select: { id: true, name: true } } },
     });
     if (!staff) return next(new AppError('Staff member not found', 404));
 
@@ -88,6 +89,7 @@ export const updateStaff = async (req, res, next) => {
     const staff = await prisma.staff.update({
       where: { id: parseInt(req.params.id) },
       data: req.body,
+      include: { branch: { select: { id: true, name: true } } },
     });
 
     res.status(200).json({ status: 'success', data: { staff } });

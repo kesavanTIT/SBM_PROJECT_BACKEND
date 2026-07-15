@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authRoutes from './auth.routes.js';
 import staffRoutes from './staff.routes.js';
 import attendanceRoutes from './attendance.routes.js';
+import branchRoutes from './branch.routes.js';
 
 const apiRouter = Router();
 
@@ -15,5 +16,7 @@ apiRouter.get('/', (req, res) => {
 apiRouter.use('/auth', authRoutes);
 apiRouter.use('/staff', staffRoutes);
 apiRouter.use('/attendance', attendanceRoutes);
+apiRouter.use('/branches', branchRoutes);
 
 export default apiRouter;
+

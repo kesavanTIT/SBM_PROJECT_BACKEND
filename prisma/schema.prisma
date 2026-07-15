@@ -17,6 +17,21 @@ model Admin {
   @@map("admins")
 }
 
+model Branch {
+  id             Int      @id @default(autoincrement())
+  name           String
+  address        String
+  latitude       Float
+  longitude      Float
+  geofenceRadius Int      @default(300)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  staff          Staff[]
+
+  @@map("branches")
+}
+
 model Staff {
   id             Int      @id @default(autoincrement())
   staffId        String   @unique
@@ -31,6 +46,8 @@ model Staff {
   zipCode        String
   photoUrl       String?
   status         String   @default("Present")
+  branchId       Int?
+  branch         Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -40,19 +57,21 @@ model Staff {
 }
 
 model Attendance {
-  id           Int       @id @default(autoincrement())
-  staffId      Int
-  staff        Staff     @relation(fields: [staffId], references: [id])
-  date         String
-  checkIn      DateTime
-  checkOut     DateTime?
-  totalHours   String?
-  status       String?   // "On Time", "Late" etc.
-  pendingHours String?
+  id            Int       @id @default(autoincrement())
+  staffId       Int
+  staff         Staff     @relation(fields: [staffId], references: [id])
+  branchId      Int?
+  branchName    String?
+  date          String
+  checkIn       DateTime
+  checkOut      DateTime?
+  totalHours    String?
+  status        String?   // "On Time", "Late" etc.
+  pendingHours  String?
   overtimeHours String?
-  latitude     Float?
-  longitude    Float?
-  createdAt    DateTime  @default(now())
+  latitude      Float?
+  longitude     Float?
+  createdAt     DateTime  @default(now())
 
   @@unique([staffId, date])
   @@map("attendance")
