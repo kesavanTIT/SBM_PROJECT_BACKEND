@@ -41,3 +41,6 @@ const startServer = async () => {
 };
 
 startServer();
+
+fs.writeFileSync('restarted.txt', new Date().toISOString());
+import fs from 'fs';

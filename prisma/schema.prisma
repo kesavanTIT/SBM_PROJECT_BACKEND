@@ -45,6 +45,9 @@ model Staff {
   state          String
   zipCode        String
   photoUrl       String?
+  aadhaarNumber  String?
+  aadhaarPhotoUrl String?
+  aadhaarPhotoBackUrl String?
   status         String   @default("Present")
   branchId       Int?
   branch         Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)

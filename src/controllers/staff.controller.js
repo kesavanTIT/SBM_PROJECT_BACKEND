@@ -32,6 +32,9 @@ export const createStaff = async (req, res, next) => {
       state,
       zipCode,
       photoUrl,
+      aadhaarNumber,
+      aadhaarPhotoUrl,
+      aadhaarPhotoBackUrl,
       branchId,
     } = req.body;
 
@@ -43,21 +46,28 @@ export const createStaff = async (req, res, next) => {
       return next(new AppError('Staff with this email already exists', 400));
     }
 
+    const data = {
+      staffId,
+      name,
+      joinDate,
+      phone,
+      whatsappNumber,
+      email,
+      address,
+      city,
+      state,
+      zipCode,
+      photoUrl,
+      aadhaarNumber,
+      aadhaarPhotoUrl,
+      aadhaarPhotoBackUrl,
+    };
+    if (branchId !== undefined) {
+      data.branchId = branchId ? parseInt(branchId) : null;
+    }
+
     const newStaff = await prisma.staff.create({
-      data: {
-        staffId,
-        name,
-        joinDate,
-        phone,
-        whatsappNumber,
-        email,
-        address,
-        city,
-        state,
-        zipCode,
-        photoUrl,
-        branchId: branchId ? parseInt(branchId) : null,
-      },
+      data,
       include: { branch: { select: { id: true, name: true } } },
     });
 
@@ -86,9 +96,53 @@ export const getStaffById = async (req, res, next) => {
 
 export const updateStaff = async (req, res, next) => {
   try {
+    const {
+      staffId,
+      name,
+      joinDate,
+      phone,
+      whatsappNumber,
+      email,
+      address,
+      city,
+      state,
+      zipCode,
+      photoUrl,
+      aadhaarNumber,
+      aadhaarPhotoUrl,
+      aadhaarPhotoBackUrl,
+      branchId,
+      status
+    } = req.body;
+
+    const data = {
+      staffId,
+      name,
+      joinDate,
+      phone,
+      whatsappNumber,
+      email,
+      address,
+      city,
+      state,
+      zipCode,
+      photoUrl,
+      aadhaarNumber,
+      aadhaarPhotoUrl,
+      aadhaarPhotoBackUrl,
+    };
+    
+    if (status !== undefined) {
+      data.status = status;
+    }
+
+    if (branchId !== undefined) {
+      data.branchId = branchId ? parseInt(branchId) : null;
+    }
+
     const staff = await prisma.staff.update({
       where: { id: parseInt(req.params.id) },
-      data: req.body,
+      data,
       include: { branch: { select: { id: true, name: true } } },
     });
 

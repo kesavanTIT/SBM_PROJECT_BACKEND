@@ -43,3 +43,9 @@ app.use((req, res, next) => {
 app.use(errorHandler);
 
 export default app; // Restart nodemon 2
+
+// Trigger nodemon restart
+
+// Trigger nodemon restart 3
+
+// Trigger restart

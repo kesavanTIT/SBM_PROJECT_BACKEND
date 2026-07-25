@@ -22,6 +22,24 @@ const getTodayDateString = () => {
   return today.toISOString().split('T')[0]; // Returns YYYY-MM-DD
 };
 
+const markPastIncompleteAsAbsent = async () => {
+  const todayStr = getTodayDateString();
+  try {
+    // Update all attendance records that have no checkout and the date is BEFORE today
+    await prisma.attendance.updateMany({
+      where: {
+        checkOut: null,
+        date: { lt: todayStr }
+      },
+      data: {
+        status: 'Absent'
+      }
+    });
+  } catch (err) {
+    console.error('Error auto-marking absent:', err);
+  }
+};
+
 export const checkIn = async (req, res, next) => {
   try {
     const { latitude, longitude, branchId } = req.body;
@@ -200,6 +218,8 @@ export const checkOut = async (req, res, next) => {
 
 export const getTodayStatus = async (req, res, next) => {
   try {
+    await markPastIncompleteAsAbsent();
+    
     const staffId = req.user.id;
     if (req.user.role !== 'staff') {
       return next(new AppError('Only staff members can perform this action', 403));
@@ -226,6 +246,8 @@ export const getTodayStatus = async (req, res, next) => {
 
 export const getStaffHistory = async (req, res, next) => {
   try {
+    await markPastIncompleteAsAbsent();
+    
     const staffId = req.user.id;
     if (req.user.role !== 'staff') {
       return next(new AppError('Only staff members can perform this action', 403));
@@ -248,6 +270,8 @@ export const getStaffHistory = async (req, res, next) => {
 
 export const getAllAttendance = async (req, res, next) => {
   try {
+    await markPastIncompleteAsAbsent();
+    
     // Admin only
     if (req.user.role !== 'admin') {
       return next(new AppError('Not authorized', 403));
