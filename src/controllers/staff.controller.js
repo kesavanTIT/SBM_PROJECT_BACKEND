@@ -96,48 +96,29 @@ export const getStaffById = async (req, res, next) => {
 
 export const updateStaff = async (req, res, next) => {
   try {
-    const {
-      staffId,
-      name,
-      joinDate,
-      phone,
-      whatsappNumber,
-      email,
-      address,
-      city,
-      state,
-      zipCode,
-      photoUrl,
-      aadhaarNumber,
-      aadhaarPhotoUrl,
-      aadhaarPhotoBackUrl,
-      branchId,
-      status
-    } = req.body;
+    // Only pick fields that are safe to update in Prisma
+    // Explicitly exclude: id, createdAt, updatedAt, branch, attendances, branchName
+    const allowedFields = [
+      'staffId', 'name', 'joinDate', 'phone', 'whatsappNumber',
+      'email', 'address', 'city', 'state', 'zipCode',
+      'photoUrl', 'aadhaarNumber', 'aadhaarPhotoUrl', 'aadhaarPhotoBackUrl',
+    ];
 
-    const data = {
-      staffId,
-      name,
-      joinDate,
-      phone,
-      whatsappNumber,
-      email,
-      address,
-      city,
-      state,
-      zipCode,
-      photoUrl,
-      aadhaarNumber,
-      aadhaarPhotoUrl,
-      aadhaarPhotoBackUrl,
-    };
-    
-    if (status !== undefined) {
-      data.status = status;
+    const data = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        data[field] = req.body[field];
+      }
     }
 
-    if (branchId !== undefined) {
-      data.branchId = branchId ? parseInt(branchId) : null;
+    // Handle status separately
+    if (req.body.status !== undefined) {
+      data.status = req.body.status;
+    }
+
+    // Handle branchId separately (needs parseInt)
+    if (req.body.branchId !== undefined) {
+      data.branchId = req.body.branchId ? parseInt(req.body.branchId) : null;
     }
 
     const staff = await prisma.staff.update({
